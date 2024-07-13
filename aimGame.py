@@ -1,3 +1,6 @@
+from panda3d.core import loadPrcFileData
+
+loadPrcFileData("", "Config.prc")
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import Point3, CollisionTraverser, CollisionHandlerQueue, CollisionNode, CollisionRay
 from panda3d.core import AmbientLight, DirectionalLight, LVector3, BitMask32
@@ -10,7 +13,13 @@ from panda3d.core import LineSegs, NodePath, CardMaker, LColor
 class MyApp(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
-        
+        # Sensitivity setting
+        self.sensitivity = 0.015
+        # Set full-screen mode with high resolution
+        props = WindowProperties()
+        props.setFullscreen(True)
+        props.setSize(1920, 1080)  # Set to your desired resolution
+        self.win.requestProperties(props)
         #load sound
         self.hitSound = self.loader.loadSfx("sounds/hit2.wav")
         # Disable the default mouse-based camera control
@@ -72,6 +81,10 @@ class MyApp(ShowBase):
         #Draw
         self.createGrid()
 
+        #For SpawnBall
+        self.occupied_positions = set()
+
+
     def createGrid(self):
         # Initialize grid parameters
         grid_size = 7  # Number of cells per side
@@ -122,14 +135,15 @@ class MyApp(ShowBase):
         ball.reparentTo(self.render)
         ball.setScale(0.5)
         
-        if i is not None and j is not None:
-            # Use provided grid indices
-            grid_x = i
-            grid_y = j
+        if i is None or j is None:
+            # Randomly choose a grid position that is not occupied
+            available_positions = [(x, y) for x in range(grid_size) for y in range(grid_size) if (x, y) not in self.occupied_positions]
+            if not available_positions:
+                self.occupied_positions.clear()  # Clear the set if all positions are occupied
+                available_positions = [(x, y) for x in range(grid_size) for y in range(grid_size)]
+            grid_x, grid_y = random.choice(available_positions)
         else:
-            # Randomly choose a grid position
-            grid_x = random.randint(0, grid_size - 1)
-            grid_y = random.randint(0, grid_size - 1)
+            grid_x, grid_y = i, j
         
         # Calculate position based on grid cell and cell size
         x = (grid_x - grid_size / 2) * cell_size
@@ -146,8 +160,8 @@ class MyApp(ShowBase):
         x = md.getX()
         y = md.getY()
         if base.win.movePointer(0, int(base.win.getXSize()/2), int(base.win.getYSize()/2)):
-            base.camera.setH(base.camera.getH() - (x - base.win.getXSize()/2) * 0.022)
-            base.camera.setP(base.camera.getP() - (y - base.win.getYSize()/2) * 0.022)
+            base.camera.setH(base.camera.getH() - (x - base.win.getXSize()/2) * self.sensitivity)
+            base.camera.setP(base.camera.getP() - (y - base.win.getYSize()/2) * self.sensitivity)
         return task.cont
     
     def shoot(self):
@@ -160,6 +174,12 @@ class MyApp(ShowBase):
                 self.pq.sortEntries()
                 pickedObj = self.pq.getEntry(0).getIntoNodePath()
                 print("You hit the ball !")
+                # Calculate the grid position of the hit ball
+                hit_pos = pickedObj.getPos()
+                grid_x = int((hit_pos.getX() + (self.grid_size / 2 * 2.0)) / 2.0)
+                grid_y = int((hit_pos.getZ() + (self.grid_size / 2 * 2.0)) / 2.0)
+                self.occupied_positions.discard((grid_x, grid_y))
+
                 pickedObj.removeNode()
                 self.hitSound.play()
                 
