@@ -14,7 +14,7 @@ class MyApp(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
         # Sensitivity setting
-        self.sensitivity = 0.015
+        self.sensitivity = 0.0171
         # Set full-screen mode with high resolution
         props = WindowProperties()
         props.setFullscreen(True)
@@ -42,7 +42,8 @@ class MyApp(ShowBase):
         
         # Initialize balls
         self.balls = []
-        self.grid_size = 3
+        #For SpawnBall
+        self.occupied_positions = set()
         self.spawnBallsInGrid()
         
         # Collision traverser
@@ -81,8 +82,7 @@ class MyApp(ShowBase):
         #Draw
         self.createGrid()
 
-        #For SpawnBall
-        self.occupied_positions = set()
+        
 
 
     def createGrid(self):
@@ -122,13 +122,13 @@ class MyApp(ShowBase):
         self.win.requestProperties(wp)
     
     def spawnBallsInGrid(self):
-        spacing = 2.0  # Adjust spacing as needed
-        for i in range(self.grid_size):
-            for j in range(self.grid_size):
+        spacing = 3.0  # Adjust spacing as needed
+        for i in range(random.randrange(2, 5)):
+            for j in range(random.randrange(2, 5)):
                 self.spawnBall(i, j, spacing)
     
     def spawnBall(self, i=None, j=None, spacing=2.0):
-        grid_size = 5  # Adjust according to your grid size
+        grid_size = 7  # Adjust according to your grid size
         cell_size = 2.0  # Adjust according to your cell size
         
         ball = self.loader.loadModel("models/ball.egg")
@@ -146,13 +146,17 @@ class MyApp(ShowBase):
             grid_x, grid_y = i, j
         
         # Calculate position based on grid cell and cell size
-        x = (grid_x - grid_size / 2) * cell_size
-        z = (grid_y - grid_size / 2) * cell_size  # Use Z-axis instead of Y-axis
+        x = (grid_x - grid_size / 2.5) * cell_size
+        z = (grid_y - grid_size / 2.5) * cell_size  # Use Z-axis instead of Y-axis
         ball.setPos(x, 0, z)  # Set Y to 0 and adjust X and Z
         
         ball.setTag('ball', str(id(ball)))  # Set a unique tag based on ball's ID
         ball.setCollideMask(BitMask32.bit(1))
         self.balls.append(ball)
+        
+        # Add the ball's position to occupied_positions
+        self.occupied_positions.add((grid_x, grid_y))
+        
     
     def update(self, task):
         """This task updates the mouse """
@@ -174,11 +178,6 @@ class MyApp(ShowBase):
                 self.pq.sortEntries()
                 pickedObj = self.pq.getEntry(0).getIntoNodePath()
                 print("You hit the ball !")
-                # Calculate the grid position of the hit ball
-                hit_pos = pickedObj.getPos()
-                grid_x = int((hit_pos.getX() + (self.grid_size / 2 * 2.0)) / 2.0)
-                grid_y = int((hit_pos.getZ() + (self.grid_size / 2 * 2.0)) / 2.0)
-                self.occupied_positions.discard((grid_x, grid_y))
 
                 pickedObj.removeNode()
                 self.hitSound.play()
